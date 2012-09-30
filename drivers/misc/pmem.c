@@ -1445,7 +1445,8 @@ static int pmem_mmap(struct file *file, struct vm_area_struct *vma)
 	down_write(&data->sem);
 	/* check this file isn't already mmaped, for submaps check this file
 	 * has never been mmaped */
-	if (data->flags & PMEM_FLAGS_MASTERMAP) {
+	if ((data->flags & PMEM_FLAGS_SUBMAP) ||
+	    (data->flags & PMEM_FLAGS_UNSUBMAP)) {
 #if PMEM_DEBUG
 		pr_err("pmem: you can only mmap a pmem file once, "
 		       "this file is already mmaped. %x\n", data->flags);
