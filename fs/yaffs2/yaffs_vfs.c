@@ -3282,7 +3282,7 @@ static struct super_block *yaffs_internal_read_super(int yaffs_version,
 		"yaffs_read_super: is_checkpointed %d",
 		dev->is_checkpointed);
 
-	yaffs_trace(YAFFS_TRACE_OS, "yaffs_read_super: done");
+	yaffs_trace(YAFFS_TRACE_ALWAYS, "yaffs_read_super: done");
 	return sb;
 }
 
