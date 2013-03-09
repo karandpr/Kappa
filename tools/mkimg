@@ -12,8 +12,9 @@ find . -name *.ko | grep -v compat-wireless-wl12xx | xargs -i cp {} /home/ka/bui
 mv /home/ka/build/ramdisk/kappa-ramdisk/system/lib/cifs.ko /home/ka/build/ramdisk/kappa-ramdisk/rek/modules
 mv /home/ka/build/ramdisk/kappa-ramdisk/system/lib/ntfs.ko /home/ka/build/ramdisk/kappa-ramdisk/rek/modules
 mv /home/ka/build/ramdisk/kappa-ramdisk/system/lib/fuse.ko /home/ka/build/ramdisk/kappa-ramdisk/rek/modules
-mv /home/ka/build/ramdisk/kappa-ramdisk/system/lib/ext4.ko /home/ka/build/ramdisk/kappa-ramdisk/rek/modules
-mv /home/ka/build/ramdisk/kappa-ramdisk/system/lib/jbd2.ko /home/ka/build/ramdisk/kappa-ramdisk/rek/modules
+mv /home/ka/build/ramdisk/kappa-ramdisk/system/lib/hfsplus.ko /home/ka/build/ramdisk/kappa-ramdisk/rek/modules
+#mv /home/ka/build/ramdisk/kappa-ramdisk/system/lib/ext4.ko /home/ka/build/ramdisk/kappa-ramdisk/rek/modules
+#mv /home/ka/build/ramdisk/kappa-ramdisk/system/lib/jbd2.ko /home/ka/build/ramdisk/kappa-ramdisk/rek/modules
 
 
 echo "Copying Wifi drivers into Ramdisk (/system/lib/modules)"
@@ -38,6 +39,6 @@ cd /home/ka/build/Kappa/bootimg
 echo "Making image $1"
 mkbootimg --kernel ../arch/arm/boot/zImage --ramdisk ../../ramdisk/kappa-ka-ramdisk.img --base 0x00200000 -o $1
 ls -alrt $1
-echo "Done"
+echo "Finished"
 
 
