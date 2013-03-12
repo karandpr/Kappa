@@ -123,3 +123,4 @@ scripts/mod/mk_elfconfig
 scripts/mod/modpost
 co
 include/linux/autoconf.h
+.config.good
