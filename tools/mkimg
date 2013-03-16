@@ -13,6 +13,7 @@ mv /home/ka/build/ramdisk/kappa-ramdisk/system/lib/cifs.ko /home/ka/build/ramdis
 mv /home/ka/build/ramdisk/kappa-ramdisk/system/lib/ntfs.ko /home/ka/build/ramdisk/kappa-ramdisk/rek/modules
 mv /home/ka/build/ramdisk/kappa-ramdisk/system/lib/fuse.ko /home/ka/build/ramdisk/kappa-ramdisk/rek/modules
 mv /home/ka/build/ramdisk/kappa-ramdisk/system/lib/hfsplus.ko /home/ka/build/ramdisk/kappa-ramdisk/rek/modules
+mv /home/ka/build/ramdisk/kappa-ramdisk/system/lib/usb-storage.ko /home/ka/build/ramdisk/kappa-ramdisk/rek/modules
 #mv /home/ka/build/ramdisk/kappa-ramdisk/system/lib/ext4.ko /home/ka/build/ramdisk/kappa-ramdisk/rek/modules
 #mv /home/ka/build/ramdisk/kappa-ramdisk/system/lib/jbd2.ko /home/ka/build/ramdisk/kappa-ramdisk/rek/modules
 

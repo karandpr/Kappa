@@ -32,7 +32,7 @@
 #include <asm/cputime.h>
 #include <linux/suspend.h>
 #include <linux/notifier.h>
-#include <asm/idle.h>
+#include "../../arch/arm/mach-msm/idle.h"
 
 #define LULZACTIVE_VERSION	(2)
 #define LULZACTIVE_AUTHOR	"tegrak"
