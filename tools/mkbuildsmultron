@@ -10,7 +10,7 @@ echo $((`cat $BUILD_FILE` + 1)) > $BUILD_FILE
 BUILD_NUMBER=$[`cat $BUILD_FILE`]
 
 cd /home/ka/build/Kappa
-ARCH=arm CROSS_COMPILE=/home/ka/build/linaro/android-toolchain-eabi/bin/arm-eabi-  make menuconfig
+#ARCH=arm CROSS_COMPILE=/home/ka/build/linaro/android-toolchain-eabi/bin/arm-eabi-  make menuconfig
 ARCH=arm CROSS_COMPILE=/home/ka/build/linaro/android-toolchain-eabi/bin/arm-eabi-  make -j8 
 
 ARCH=arm CROSS_COMPILE=/home/ka/build/linaro/android-toolchain-eabi/bin/arm-eabi-  make -j8 modules

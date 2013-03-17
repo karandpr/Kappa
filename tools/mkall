@@ -1,0 +1,37 @@
+#!/bin/bash
+
+echo "Making them all"
+cd /home/ka/build/Kappa
+
+echo "Cleaning before Mango build"
+mkclean
+echo "Applying Mango defconfig"
+mkdefmango
+echo "Making Mango"
+mkbuildmango
+
+
+echo "Cleaning before Coconut build"
+mkclean
+echo "Applying Coconut defconfig"
+mkdefcoconut
+echo "Making Coconut"
+mkbuildcoconut
+
+echo "Cleaning before Satsuma build"
+mkclean
+echo "Applying Satsuma defconfig"
+mkdefsatsuma
+echo "Making Satsuma"
+mkbuilsatsuma
+
+echo "Cleaning before Smultron build"
+mkclean
+echo "Applying Smultron defconfig"
+mkdefsmultron
+echo "Making Smultron"
+mkbuildsmultron
+
+echo "Done, I'll get some rest now"
+
+
