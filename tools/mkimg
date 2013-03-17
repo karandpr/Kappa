@@ -35,7 +35,7 @@ cp ./net/mac80211/mac80211.ko /home/ka/build/ramdisk/kappa-ramdisk/rek/modules/
 cd /home/ka/build/ramdisk/kappa-ramdisk 
 echo "Packaging Ramdisk"
 rm ../kappa-ka-ramdisk.img
-find . | cpio --quiet -H newc -o | lzma -7 > ../kappa-ka-ramdisk.img 
+find . | grep -v .git | cpio --quiet -H newc -o | lzma -7 > ../kappa-ka-ramdisk.img 
 cd /home/ka/build/Kappa/bootimg 
 echo "Making image $1"
 mkbootimg --kernel ../arch/arm/boot/zImage --ramdisk ../../ramdisk/kappa-ka-ramdisk.img --base 0x00200000 -o $1
