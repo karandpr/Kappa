@@ -42,6 +42,7 @@
 #include <linux/leds.h>
 #include <linux/pm_runtime.h>
 
+
 #define MSM_FB_C
 #include "msm_fb.h"
 #include "mddihosti.h"
@@ -51,6 +52,7 @@
 
 #ifdef CONFIG_FB_MSM_LOGO
 #define INIT_IMAGE_FILE "/logo.rle"
+#define INIT_STOCK_IMAGE_FILE "/stock.rle"
 extern int load_565rle_image(char *filename);
 #endif
 
@@ -1118,6 +1120,19 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 			msm_fb_open(fbi, 0);
 			msm_fb_pan_display(var, fbi);
 		}	/* Flip buffer */
+		
+                
+		// Sleep
+		
+		usleep(500000);	
+		
+		
+
+		if (!load_565rle_image(INIT_STOCK_IMAGE_FILE)) {
+                        msm_fb_open(fbi, 0);
+                        msm_fb_pan_display(var, fbi);
+                }       /* Flip buffer */
+
 	}
 #endif
 	ret = 0;
