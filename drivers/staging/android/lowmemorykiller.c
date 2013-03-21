@@ -41,6 +41,15 @@
 #include <linux/swap.h>
 #endif
 
+#ifdef CONFIG_ANDROID_LOW_MEMORY_KILLER_AUTODETECT_OOM_ADJ_VALUES
+#include <linux/kobject.h>
+#include <linux/string.h>
+#include <linux/sysfs.h>
+
+static int auto_detect = 1;
+static int init_kobject(void);
+
+#endif
 
 #define DEBUG_LEVEL_DEATHPENDING 6
 
@@ -277,6 +286,9 @@ static int __init lowmem_init(void)
 {
 	task_free_register(&task_nb);
 	register_shrinker(&lowmem_shrinker);
+	#ifdef CONFIG_ANDROID_LOW_MEMORY_KILLER_AUTODETECT_OOM_ADJ_VALUES 
+	init_kobject();
+	#endif
 	return 0;
 }
 
@@ -286,9 +298,137 @@ static void __exit lowmem_exit(void)
 	task_free_unregister(&task_nb);
 }
 
+#ifdef CONFIG_ANDROID_LOW_MEMORY_KILLER_AUTODETECT_OOM_ADJ_VALUES                                                                            
+static short lowmem_oom_adj_to_oom_score_adj(short oom_adj)                                                                                  
+{                                                                                                                                            
+       if (oom_adj == OOM_ADJUST_MAX)                                                                                                        
+               return OOM_SCORE_ADJ_MAX;                                                                                                     
+       else                                                                                                                                  
+               return (oom_adj * OOM_SCORE_ADJ_MAX) / -OOM_DISABLE;                                                                          
+}                                                                                                                                            
+                                                                                                                                             
+static void lowmem_autodetect_oom_adj_values(void)                                                                                           
+{                                                                                                                                            
+       int i;                                                                                                                                
+       short oom_adj;                                                                                                                        
+       short oom_score_adj;                                                                                                                  
+       int array_size = ARRAY_SIZE(lowmem_adj);                                                                                              
+                                                                                                                                                     if (lowmem_adj_size < array_size)                                                                                                     
+               array_size = lowmem_adj_size;                                                                                                 
+                                                                                                                                             
+       if (array_size <= 0)                                                                                                                  
+               return;                                                                                                                       
+                                                                                                                                             
+       oom_adj = lowmem_adj[array_size - 1];                                                                                                 
+       if (oom_adj > OOM_ADJUST_MAX)                                                                                                         
+               return;                                                                                                                       
+                                                                                                                                             
+       oom_score_adj = lowmem_oom_adj_to_oom_score_adj(oom_adj);                                                                             
+       if (oom_score_adj <= OOM_ADJUST_MAX)                                                                                                  
+               return;                                                                                                                       
+                                                                                                                                             
+       lowmem_print(1, "lowmem_shrink: convert oom_adj to oom_score_adj:\n");                                                                
+       for (i = 0; i < array_size; i++) {                                                                                                    
+               oom_adj = lowmem_adj[i];                                                                                                      
+               oom_score_adj = lowmem_oom_adj_to_oom_score_adj(oom_adj);                                                                     
+               lowmem_adj[i] = oom_score_adj;                                                                                                
+               lowmem_print(1, "oom_adj %d => oom_score_adj %d\n",                                                                           
+                            oom_adj, oom_score_adj);                                                                                         
+       }                                                                                                                                     
+}                                                                                                                                            
+                                                                                                                                             
+static int lowmem_adj_array_set(const char *val, struct kernel_param *kp)                                                              
+{                                                                                                                                            
+       int ret; 
+       ret = param_array_set(val, kp);                                                                                                                                      
+       /* HACK: Autodetect oom_adj values in lowmem_adj array */
+       /* But only if not disabled via sysfs interface /sys/kernel/lowmemorykiller/auto_detect */
+       /* echo 0 > /sys/kernel/lowmemorykiller/auto_detect to disable auto_detect at runtime */
+       /* Default is enabled (1) when config option is enabled too */
+
+       if (auto_detect)
+       		lowmem_autodetect_oom_adj_values(); 
+       return ret;
+}                                                                                                                           
+static int lowmem_adj_array_get(char *buffer, struct kernel_param *kp)        
+{
+       return param_array_get(buffer, kp);                                                                                               
+}
+                                                                                                                                             
+static void lowmem_adj_array_free(void *arg)                                                                                                 
+{
+       kfree(arg);                                                                                                            
+}
+                                                                                                                                             
+                                                                                                                                             
+static const struct kparam_array __param_arr_adj = {
+       .max = ARRAY_SIZE(lowmem_adj),                                                                                                        
+       .num = &lowmem_adj_size,                                                                                                              
+       .set = param_set_int,
+       .get = param_get_int,
+       .elemsize = sizeof(lowmem_adj[0]),                                                                                                    
+       .elem = lowmem_adj,                                                                                                                   
+};                                                                                                                                           
+
+//For the auto_detect on/off sysfs attribute in /sys/kernel/lowmemory killer - Inspired by an0nym0us' posts on Mesa Kernel
+
+static ssize_t ad_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", auto_detect);
+}
+
+static ssize_t ad_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	sscanf(buf, "%du", &auto_detect);
+	if (auto_detect)
+		printk("LMK - Auto Detect is On\n");
+	else
+		printk("LMK - Auto Detect is Off\n");
+
+	return count;
+}
+
+
+static int init_kobject(void)
+{
+
+	int retval;
+	static struct kobj_attribute ad_attribute = __ATTR(auto_detect, 0666, ad_show, ad_store); 
+	static struct attribute *attrs[] = { &ad_attribute.attr, NULL, };                                                                                                                                                    
+	static struct attribute_group attr_group = {
+        	.attrs = attrs,                                                                                                                       
+	};                                                                              
+                                                                             
+	static struct kobject *ad_kobj;                                                                                                      
+
+	ad_kobj = kobject_create_and_add("lowmemorykiller", kernel_kobj);
+	if (!ad_kobj) 
+		return -ENOMEM;
+
+	retval = sysfs_create_group(ad_kobj, &attr_group);
+	if (retval)
+		kobject_put(ad_kobj);
+	return retval;
+}
+
+#endif                                                                                                                                       
+                                                                                                                                             
+                                                                                                                                            
+
+
 module_param_named(cost, lowmem_shrinker.seeks, int, S_IRUGO | S_IWUSR);
+
+#ifdef CONFIG_ANDROID_LOW_MEMORY_KILLER_AUTODETECT_OOM_ADJ_VALUES
+__module_param_call(MODULE_PARAM_PREFIX, adj,
+	lowmem_adj_array_set, lowmem_adj_array_get,
+	.arr = &__param_arr_adj,
+	S_IRUGO | S_IWUSR, 1);
+__MODULE_PARM_TYPE(adj, "array of int");
+#else
 module_param_array_named(adj, lowmem_adj, int, &lowmem_adj_size,
 			 S_IRUGO | S_IWUSR);
+#endif
+
 module_param_array_named(minfree, lowmem_minfree, uint, &lowmem_minfree_size,
 			 S_IRUGO | S_IWUSR);
 module_param_named(debug_level, lowmem_debug_level, uint, S_IRUGO | S_IWUSR);
