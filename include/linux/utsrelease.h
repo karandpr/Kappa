@@ -1,1 +1,1 @@
-#define UTS_RELEASE "2.6.32.60-Kappa1.6Beta4"
+#define UTS_RELEASE "2.6.32.60-Kappa1.6Beta5"
