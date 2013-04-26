@@ -257,6 +257,12 @@ config CPU_FREQ_DEFAULT_GOV_HYBRID
 	 governor. If unsure have a look at the help section of the 	
 	 driver. Fallback governor will be the intellidemand governor.
 
+config CPU_FREQ_DEFAULT_GOV_BOOSTED
+	bool "boosted"
+	select CPU_FREQ_GOV_BOOSTED
+	help
+	 Use the CPUFreq governor Boosted, a smarter SmartassV2
+
 endchoice 
 
 config CPU_FREQ_GOV_PERFORMANCE
@@ -521,6 +527,10 @@ config CPU_FREQ_GOV_HYBRID
 	 module will be called cpufreq_hybrid.
          For details, take a look at linux/Documentation/cpu-freq.  	  
  	 If in doubt, say N.
+
+config CPU_FREQ_GOV_BOOSTED
+	tristate "'boosted(smartass v2)' cpufreq policy governor"
+	select CPU_FREQ_TABLE
 
 config CPU_FREQ_MIN_TICKS
 	int "Ticks between governor polling interval."
