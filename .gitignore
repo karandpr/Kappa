@@ -126,5 +126,5 @@ include/linux/autoconf.h
 .config.good
 include/linux/utsrelease.h
 utsrelease.h
-compat-wireless-wl12xx
+#compat-wireless-wl12xx
 
