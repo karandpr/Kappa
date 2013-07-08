@@ -1029,7 +1029,7 @@ static unsigned int find_next_to_unuse(struct swap_info_struct *si,
  * and then search for the process using it.  All the necessary
  * page table adjustments can then be made atomically.
  */
-static int try_to_unuse(unsigned int type)
+int try_to_unuse(unsigned int type)
 {
 	struct swap_info_struct * si = &swap_info[type];
 	struct mm_struct *start_mm;
