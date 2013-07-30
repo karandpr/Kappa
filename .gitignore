@@ -129,3 +129,4 @@ utsrelease.h
 scripts/kconfig/mconf
 include/linux/utsrelease.h
 firmware/*
+include/asm-arm/asm-offsets.h
