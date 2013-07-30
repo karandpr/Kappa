@@ -30,7 +30,7 @@
 #include <linux/syscalls.h>
 #include <linux/memcontrol.h>
 #include <linux/ksm.h>
-
+#include <linux/frontswap.h>
 #include <asm/pgtable.h>
 #include <asm/tlbflush.h>
 #include <linux/swapops.h>
@@ -48,9 +48,9 @@ static const char Unused_file[] = "Unused swap file entry ";
 static const char Bad_offset[] = "Bad swap offset entry ";
 static const char Unused_offset[] = "Unused swap offset entry ";
 
-static struct swap_list_t swap_list = {-1, -1};
+struct swap_list_t swap_list = {-1, -1};
 
-static struct swap_info_struct swap_info[MAX_SWAPFILES];
+struct swap_info_struct swap_info[MAX_SWAPFILES];
 
 static DEFINE_MUTEX(swapon_mutex);
 
@@ -2244,3 +2244,4 @@ int valid_swaphandles(swp_entry_t entry, unsigned long *offset)
 	 */
 	*offset = ++toff;
 	return nr_pages? ++nr_pages: 0;
+}
