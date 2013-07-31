@@ -403,8 +403,8 @@ extern struct cpufreq_governor cpufreq_gov_intellidemand2;
 #define CPUFREQ_DEFAULT_GOVERNOR        (&cpufreq_gov_intellidemand2)
 
 #elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_SMARTASSH3)
-extern struct cpufreq_governor cpufreq_gov_smartassh3;
-#define CPUFREQ_DEFAULT_GOVERNOR        (&cpufreq_gov_smartassh3)
+extern struct cpufreq_governor cpufreq_gov_smartass_h3 ;
+#define CPUFREQ_DEFAULT_GOVERNOR        (&cpufreq_gov_smartass_h3)
 
 
 #endif                                                                                                                                        
