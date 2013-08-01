@@ -403,33 +403,23 @@ EXPORT_SYMBOL(blk_sync_queue);
 
 void __blk_run_queue(struct request_queue *q)
 {
-	blk_remove_plug(q);
-
 	if (unlikely(blk_queue_stopped(q)))
-		return;
-
-	if (elv_queue_empty(q))
 		return;
 
 	/*
 	 * Only recurse once to avoid overrunning the stack, let the unplug
 	 * handling reinvoke the handler shortly if we already got there.
 	 */
-	if (!queue_flag_test_and_set(QUEUE_FLAG_REENTER, q)) {
-		if (!q->notified_urgent &&
-				q->elevator->ops->elevator_is_urgent_fn &&
-			q->urgent_request_fn &&
-			q->elevator->ops->elevator_is_urgent_fn(q)) {
-			q->notified_urgent = true;
-			q->urgent_request_fn(q);
-		} else
-			q->request_fn(q);
-			queue_flag_clear(QUEUE_FLAG_REENTER, q);
-	} else {
-		queue_flag_set(QUEUE_FLAG_PLUGGED, q);
-		kblockd_schedule_work(q, &q->unplug_work);
-	}
+	if (!q->notified_urgent &&
+			q->elevator->ops->elevator_is_urgent_fn &&
+		q->urgent_request_fn &&
+		q->elevator->ops->elevator_is_urgent_fn(q)) {
+		q->notified_urgent = true;
+		q->urgent_request_fn(q);
+	} else
+		q->request_fn(q);
 }
+
 EXPORT_SYMBOL(__blk_run_queue);
 
 /**
