@@ -651,9 +651,9 @@ static struct mapped_device *find_device(struct dm_ioctl *param)
 		 * Sneakily write in both the name and the uuid
 		 * while we have the cell.
 		 */
-		strlcpy(param->name, hc->name, sizeof(param->name));
+		strncpy(param->name, hc->name, sizeof(param->name));
 		if (hc->uuid)
-			strlcpy(param->uuid, hc->uuid, sizeof(param->uuid));
+			strncpy(param->uuid, hc->uuid, sizeof(param->uuid)-1);
 		else
 			param->uuid[0] = '\0';
 
