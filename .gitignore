@@ -124,7 +124,5 @@ scripts/mod/modpost
 co
 include/linux/autoconf.h
 .config.good
-include/linux/utsrelease.h
-utsrelease.h
 #compat-wireless-wl12xx
 
