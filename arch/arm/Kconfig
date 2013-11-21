@@ -1400,6 +1400,14 @@ config KEXEC
 	  initially work for you.  It may help to enable device hotplugging
 	  support.
 
+config ATAGS_PROC
+	bool "Export atags in procfs"
+	default n
+	help
+	  Should the atags used to boot the kernel be exported in an "atags"
+	  file in procfs. Useful with kexec.
+
+
 config CRASH_NOTES
 	bool "Support for storing crash_notes"
 	default n
