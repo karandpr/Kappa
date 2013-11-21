@@ -10,46 +10,39 @@ relocate_new_kernel:
 	ldr	r0,kexec_indirection_page
 	ldr	r1,kexec_start_address
 
-	/*
-	 * If there is no indirection page (we are doing crashdumps)
-	 * skip any relocation.
-	 */
-	cmp	r0, #0
-	beq	2f
+	/* top, read another word for the indirection page */
+	ldr     r3, [r0],#4
 
-0:	/* top, read another word for the indirection page */
-	ldr	r3, [r0],#4
-
-	/* Is it a destination page. Put destination address to r4 */
-	tst	r3,#1,0
-	beq	1f
-	bic	r4,r3,#1
-	b	0b
+       /* Is it a destination page. Put destination address to r4 */
+       tst     r3,#1,0
+       beq     1f
+       bic     r4,r3,#1
+       b       0b
 1:
-	/* Is it an indirection page */
-	tst	r3,#2,0
-	beq	1f
-	bic	r0,r3,#2
-	b	0b
+       /* Is it an indirection page */
+       tst     r3,#2,0
+       beq     1f
+       bic     r0,r3,#2
+       b       0b
 1:
 
-	/* are we done ? */
-	tst	r3,#4,0
-	beq	1f
-	b	2f
+       /* are we done ? */
+       tst     r3,#4,0
+       beq     1f
+       b       2f
 
 1:
-	/* is it source ? */
-	tst	r3,#8,0
-	beq	0b
-	bic r3,r3,#8
-	mov r6,#1024
+       /* is it source ? */
+       tst     r3,#8,0
+       beq     0b
+       bic r3,r3,#8
+       mov r6,#1024
 9:
-	ldr r5,[r3],#4
-	str r5,[r4],#4
-	subs r6,r6,#1
-	bne 9b
-	b 0b
+       ldr r5,[r3],#4
+       str r5,[r4],#4
+       subs r6,r6,#1
+       bne 9b
+       b 0b
 
 2:
 	/* Jump to relocated kernel */
@@ -58,8 +51,6 @@ relocate_new_kernel:
 	ldr r1,kexec_mach_type
 	ldr r2,kexec_boot_atags
 	mov pc,lr
-
-	.align
 
 	.globl kexec_start_address
 kexec_start_address:
