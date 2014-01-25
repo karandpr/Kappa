@@ -80,6 +80,11 @@
 #define VEN_BUFFLAG_EXTRADATA	0x00000040
 #define VEN_BUFFLAG_CODECCONFIG	0x00000080
 
+/*Post processing flags bit masks*/
+#define VEN_EXTRADATA_NONE          0x001
+#define VEN_EXTRADATA_QCOMFILLER    0x002
+#define VEN_EXTRADATA_SLICEINFO     0x100
+
 /*ENCODER CONFIGURATION CONSTANTS*/
 
 /*Encoded video frame types*/
@@ -264,6 +269,16 @@ struct venc_ioctl_msg{
  * Asynchronous response message code:VEN_MSG_INPUT_BUFFER_DONE*/
 #define VEN_IOCTL_CMD_FLUSH \
 	_IOW(VEN_IOCTLBASE_NENC, 16, struct venc_ioctl_msg)
+
+#define VEN_IOCTL_SET_RECON_BUFFER \
+	_IOW(VEN_IOCTLBASE_NENC, 20, struct venc_ioctl_msg)
+
+#define VEN_IOCTL_FREE_RECON_BUFFER \
+	_IOW(VEN_IOCTLBASE_NENC, 21, struct venc_ioctl_msg)
+
+#define VEN_IOCTL_GET_RECON_BUFFER_SIZE \
+	_IOW(VEN_IOCTLBASE_NENC, 22, struct venc_ioctl_msg)
+
 
 
 /*Asynchronous respone message code:VEN_MSG_PAUSE*/
@@ -462,6 +477,17 @@ struct venc_ioctl_msg{
 
 #define VEN_IOCTL_GET_NUMBER_INSTANCES \
 	_IOR(VEN_IOCTLBASE_ENC, 46, struct venc_ioctl_msg)
+
+#define VEN_IOCTL_SET_METABUFFER_MODE \
+	_IOW(VEN_IOCTLBASE_ENC, 47, struct venc_ioctl_msg)
+
+
+/*IOCTL params:SET: InputData - unsigned int, OutputData - NULL.*/
+#define VEN_IOCTL_SET_EXTRADATA \
+	_IOW(VEN_IOCTLBASE_ENC, 48, struct venc_ioctl_msg)
+/*IOCTL params:GET: InputData - NULL, OutputData - unsigned int.*/
+#define VEN_IOCTL_GET_EXTRADATA \
+	_IOR(VEN_IOCTLBASE_ENC, 49, struct venc_ioctl_msg)
 
 struct venc_switch{
 	unsigned char	status;
