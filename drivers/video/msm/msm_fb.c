@@ -54,14 +54,9 @@
 extern int load_565rle_image(char *filename);
 #endif
 
-#ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
-#define MSM_FB_NUM	3
-#endif
-
 static unsigned char *fbram;
 static unsigned char *fbram_phys;
 static int fbram_size;
-static bool align_buffer = false;
 
 static struct platform_device *pdev_list[MSM_FB_MAX_DEV_LIST];
 static int pdev_list_cnt;
@@ -170,7 +165,7 @@ static void msm_fb_set_bl_brightness(struct led_classdev *led_cdev,
 	if (!bl_lvl && value)
 		bl_lvl = 1;
 
-	msm_fb_set_backlight(mfd, bl_lvl);
+	msm_fb_set_backlight(mfd, bl_lvl, 1);
 }
 
 static struct led_classdev backlight_led = {
@@ -317,7 +312,7 @@ static int msm_fb_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	mfd->panel_info.frame_count = 0;
-	mfd->bl_level = 0;
+	mfd->bl_level = mfd->panel_info.bl_max;
 #ifdef CONFIG_FB_MSM_OVERLAY
 	mfd->overlay_play_enable = 1;
 #endif
@@ -599,7 +594,7 @@ static void msmfb_early_resume(struct early_suspend *h)
 }
 #endif
 
-void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
+void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl, u32 save)
 {
 	struct msm_fb_panel_data *pdata;
 
@@ -607,8 +602,16 @@ void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
 
 	if ((pdata) && (pdata->set_backlight)) {
 		down(&mfd->sem);
+		if ((bkl_lvl != mfd->bl_level) || (!save)) {
+			u32 old_lvl;
+
+			old_lvl = mfd->bl_level;
 			mfd->bl_level = bkl_lvl;
 			pdata->set_backlight(mfd);
+
+			if (!save)
+				mfd->bl_level = old_lvl;
+		}
 		up(&mfd->sem);
 	}
 }
@@ -676,41 +679,6 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 	}
 
 	return ret;
-}
-
-int calc_fb_offset(struct msm_fb_data_type *mfd, struct fb_info *fbi, int bpp)
-{
-	struct msm_panel_info *panel_info = &mfd->panel_info;
-	int remainder, yres, offset;
-
-	if (!align_buffer)
-	{
-		return fbi->var.xoffset * bpp + fbi->var.yoffset * fbi->fix.line_length;
-	}
-
-	if (panel_info->mode2_yres != 0) {
-		yres = panel_info->mode2_yres;
-		remainder = (fbi->fix.line_length*yres) & (PAGE_SIZE - 1);
-	} else {
-		yres = panel_info->yres;
-		remainder = (fbi->fix.line_length*yres) & (PAGE_SIZE - 1);
-	}
-
-	if (!remainder)
-		remainder = PAGE_SIZE;
-
-	if (fbi->var.yoffset < yres) {
-		offset = (fbi->var.xoffset * bpp);
-				/* iBuf->buf +=	fbi->var.xoffset * bpp + 0 *
-				yres * fbi->fix.line_length; */
-	} else if (fbi->var.yoffset >= yres && fbi->var.yoffset < 2 * yres) {
-		offset = (fbi->var.xoffset * bpp + yres *
-		fbi->fix.line_length + PAGE_SIZE - remainder);
-	} else {
-		offset = (fbi->var.xoffset * bpp + 2 * yres *
-		fbi->fix.line_length + 2 * (PAGE_SIZE - remainder));
-	}
-	return offset;
 }
 
 static void msm_fb_fillrect(struct fb_info *info,
@@ -866,19 +834,6 @@ static struct fb_ops msm_fb_ops = {
 	.fb_mmap = msm_fb_mmap,
 };
 
-static __u32 msm_fb_line_length(__u32 fb_index, __u32 xres, int bpp)
-{
-	/* The adreno GPU hardware requires that the pitch be aligned to
-	   32 pixels for color buffers, so for the cases where the GPU
-	   is writing directly to fb0, the framebuffer pitch
-	   also needs to be 32 pixel aligned */
-
-	if (fb_index == 0)
-		return ALIGN(xres, 32) * bpp;
-	else
-		return xres * bpp;
-}
-
 static int msm_fb_register(struct msm_fb_data_type *mfd)
 {
 	int ret = -ENODEV;
@@ -889,7 +844,6 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	struct fb_var_screeninfo *var;
 	int *id;
 	int fbram_offset;
-	int remainder, remainder_mode2;
 
 	/*
 	 * fb info initialization
@@ -904,10 +858,10 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	fix->mmio_len = 0;	/* No MMIO Address */
 	fix->accel = FB_ACCEL_NONE;/* FB_ACCEL_MSM needes to be added in fb.h */
 
-	var->xoffset = 0;	/* Offset from virtual to visible */
-	var->yoffset = 0;	/* resolution */
-	var->grayscale = 0;	/* No graylevels */
-	var->nonstd = 0;	/* standard pixel format */
+	var->xoffset = 0,	/* Offset from virtual to visible */
+	var->yoffset = 0,	/* resolution */
+	var->grayscale = 0,	/* No graylevels */
+	var->nonstd = 0,	/* standard pixel format */
 	var->activate = FB_ACTIVATE_VBL;	/* activate it at vsync */
 
 	/* height of picture in mm */
@@ -922,9 +876,9 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	else
 		var->width = panel_info->width;
 
-	var->accel_flags = 0;	/* acceleration flags */
-	var->sync = 0;	/* see FB_SYNC_* */
-	var->rotate = 0;	/* angle we rotate counter clockwise */
+	var->accel_flags = 0,	/* acceleration flags */
+	var->sync = 0,	/* see FB_SYNC_* */
+	var->rotate = 0,	/* angle we rotate counter clockwise */
 	mfd->op_enable = FALSE;
 
 	switch (mfd->fb_imgType) {
@@ -971,16 +925,16 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 		fix->xpanstep = 1;
 		fix->ypanstep = 1;
 		var->vmode = FB_VMODE_NONINTERLACED;
-		var->blue.offset = 0;
-		var->green.offset = 8;
-		var->red.offset = 16;
+		var->blue.offset = 24;
+		var->green.offset = 16;
+		var->red.offset = 8;
 		var->blue.length = 8;
 		var->green.length = 8;
 		var->red.length = 8;
 		var->blue.msb_right = 0;
 		var->green.msb_right = 0;
 		var->red.msb_right = 0;
-		var->transp.offset = 24;
+		var->transp.offset = 0;
 		var->transp.length = 8;
 		bpp = 4;
 		break;
@@ -990,16 +944,16 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 		fix->xpanstep = 1;
 		fix->ypanstep = 1;
 		var->vmode = FB_VMODE_NONINTERLACED;
-		var->blue.offset = 8;
-		var->green.offset = 16;
-		var->red.offset = 24;
+		var->blue.offset = 16;
+		var->green.offset = 8;
+		var->red.offset = 0;
 		var->blue.length = 8;
 		var->green.length = 8;
 		var->red.length = 8;
 		var->blue.msb_right = 0;
 		var->green.msb_right = 0;
 		var->red.msb_right = 0;
-		var->transp.offset = 0;
+		var->transp.offset = 24;
 		var->transp.length = 8;
 		bpp = 4;
 		break;
@@ -1033,54 +987,22 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 		return ret;
 	}
 
-	fix->line_length = msm_fb_line_length(mfd->index, panel_info->xres,
-					      bpp);
+	/* The adreno GPU hardware requires that the pitch be aligned to
+	   32 pixels for color buffers, so for the cases where the GPU
+	   is writing directly to fb0, the framebuffer pitch
+	   also needs to be 32 pixel aligned */
 
-	/* Make sure all buffers can be addressed on a page boundary by an x
-	 * and y offset */
-
-	remainder = (fix->line_length * panel_info->yres) & (PAGE_SIZE - 1);
-					/* PAGE_SIZE is a power of 2 */
-	if (!remainder)
-		remainder = PAGE_SIZE;
-	remainder_mode2 = (fix->line_length *
-				panel_info->mode2_yres) & (PAGE_SIZE - 1);
-	if (!remainder_mode2)
-		remainder_mode2 = PAGE_SIZE;
-
-	/* calculate smem_len based on max size of two supplied modes */
-	fix->smem_len = MAX((msm_fb_line_length(mfd->index, panel_info->xres,
-					      bpp) *
-			    panel_info->yres + PAGE_SIZE -
-				remainder) * mfd->fb_page,
-			    (msm_fb_line_length(mfd->index,
-					       panel_info->mode2_xres,
-					       bpp) *
-			    panel_info->mode2_yres + PAGE_SIZE -
-				remainder_mode2) * mfd->fb_page);
-
-	/*
-	 * calculate smem_len based on max size of two supplied modes.
-	 * Only fb0 has mem. fb1 and fb2 don't have mem.
-	 */
 	if (mfd->index == 0)
-		fix->smem_len = roundup(MAX(msm_fb_line_length(mfd->index,
-							panel_info->xres,
-							bpp) *
-				     panel_info->yres * mfd->fb_page,
-				    msm_fb_line_length(mfd->index,
-							panel_info->mode2_xres,
-							bpp) *
-				      panel_info->mode2_yres * mfd->fb_page), PAGE_SIZE);
-	else if (mfd->index == 1 || mfd->index == 2) {
-		pr_debug("%s:%d no memory is allocated for fb%d!\n",
-			__func__, __LINE__, mfd->index);
-		fix->smem_len = 0;
-	}
+		fix->line_length = ALIGN(panel_info->xres, 32) * bpp;
+	else
+		fix->line_length = panel_info->xres * bpp;
+
+	fix->smem_len = fix->line_length * panel_info->yres * mfd->fb_page;
+
+	fix->smem_len += 128 * 1024;
 
 	mfd->var_xres = panel_info->xres;
 	mfd->var_yres = panel_info->yres;
-	mfd->var_frame_rate = panel_info->frame_rate;
 
 	var->pixclock = mfd->panel_info.clk_rate;
 	mfd->var_pixclock = var->pixclock;
@@ -1138,16 +1060,14 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	fbram_phys += fbram_offset;
 	fbram_size -= fbram_offset;
 
-	if (mfd->index == 0)
 	if (fbram_size < fix->smem_len) {
-			pr_err("error: no more framebuffer memory!\n");
+		printk(KERN_ERR "error: no more framebuffer memory!\n");
 		return -ENOMEM;
 	}
 
 	fbi->screen_base = fbram;
 	fbi->fix.smem_start = (unsigned long)fbram_phys;
 
-	if (mfd->index == 0)
 	memset(fbi->screen_base, 0x0, fix->smem_len);
 
 	mfd->op_enable = TRUE;
@@ -1354,11 +1274,7 @@ static int msm_fb_open(struct fb_info *info, int user)
 
 
 	if (!mfd->ref_cnt) {
-		if ((info->node != 1) && (info->node != 2)) {
 		mdp_set_dma_pan_info(info, NULL, TRUE);
-		} else
-			pr_debug("%s:%d no mdp_set_dma_pan_info %d\n",
-				__func__, __LINE__, info->node);
 
 		if (msm_fb_blank_sub(FB_BLANK_UNBLANK, info, mfd->op_enable)) {
 			printk(KERN_ERR "msm_fb_open: can't turn on display!\n");
@@ -1407,16 +1323,6 @@ static int msm_fb_pan_display(struct fb_var_screeninfo *var,
 	struct msm_fb_panel_data *pdata =
 		(struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
 
-	/*
-	 * If framebuffer is 1 or 2, io pen display is not allowed.
-	 */
-	if (info->node == 1 || info->node == 2) {
-		pr_err("%s: no pan display for fb%d!",
-		       __func__, info->node);
-		return -EPERM;
-	}
-
-	if (info->node != 0)	/* primary */
 	if ((!mfd->op_enable) || (!mfd->panel_power_on))
 		return -EPERM;
 
@@ -1436,7 +1342,6 @@ static int msm_fb_pan_display(struct fb_var_screeninfo *var,
 
 	/* "UPDT" */
 	if (var->reserved[0] == 0x54445055) {
-
 		dirty.xoffset = var->reserved[1] & 0xffff;
 		dirty.yoffset = (var->reserved[1] >> 16) & 0xffff;
 
@@ -1491,7 +1396,6 @@ static int msm_fb_pan_display(struct fb_var_screeninfo *var,
 static int msm_fb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
-	int hole_offset;
 
 	if (var->rotate != FB_ROTATE_UR)
 		return -EINVAL;
@@ -1538,14 +1442,14 @@ static int msm_fb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 		   and verify the position of the RGB components */
 
 		if (var->transp.offset == 24) {
-			if ((var->blue.offset != 0) ||
+			if ((var->blue.offset != 16) ||
 			    (var->green.offset != 8) ||
-			    (var->red.offset != 16))
+			    (var->red.offset != 0))
 				return -EINVAL;
 		} else if (var->transp.offset == 0) {
-			if ((var->blue.offset != 8) ||
+			if ((var->blue.offset != 24) ||
 			    (var->green.offset != 16) ||
-			    (var->red.offset != 24))
+			    (var->red.offset != 8))
 				return -EINVAL;
 		} else
 			return -EINVAL;
@@ -1570,63 +1474,24 @@ static int msm_fb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 	if ((var->xres_virtual <= 0) || (var->yres_virtual <= 0))
 		return -EINVAL;
 
-	if ((info->node != 1) && (info->node != 2))
 	if (info->fix.smem_len <
-		    (var->xres_virtual*
-		     var->yres_virtual*
-		     (var->bits_per_pixel/8)))
+		(var->xres_virtual*var->yres_virtual*(var->bits_per_pixel/8)))
 		return -EINVAL;
 
 	if ((var->xres == 0) || (var->yres == 0))
 		return -EINVAL;
 
-	if ((var->xres > MAX(mfd->panel_info.xres,
-			     mfd->panel_info.mode2_xres)) ||
-		(var->yres > MAX(mfd->panel_info.yres,
-				 mfd->panel_info.mode2_yres)))
+	if ((var->xres > mfd->panel_info.xres) ||
+		(var->yres > mfd->panel_info.yres))
 		return -EINVAL;
 
 	if (var->xoffset > (var->xres_virtual - var->xres))
 		return -EINVAL;
 
-	if (!mfd->panel_info.mode2_yres)
-		hole_offset = (mfd->fbi->fix.line_length *
-			mfd->panel_info.yres) % PAGE_SIZE;
-	else
-		hole_offset = (mfd->fbi->fix.line_length *
-			mfd->panel_info.mode2_yres) % PAGE_SIZE;
-
-	if (!hole_offset) {
-		hole_offset = PAGE_SIZE - hole_offset;
-		hole_offset = hole_offset/mfd->fbi->fix.line_length;
-	}
-
-	if (var->yoffset > (var->yres_virtual - var->yres + (hole_offset *
-							(mfd->fb_page - 1))))
+	if (var->yoffset > (var->yres_virtual - var->yres))
 		return -EINVAL;
 
 	return 0;
-}
-
-int msm_fb_check_frame_rate(struct msm_fb_data_type *mfd
-						, struct fb_info *info)
-{
-	int panel_height, panel_width, var_frame_rate, fps_mod;
-	struct fb_var_screeninfo *var = &info->var;
-	fps_mod = 0;
-	if ((mfd->panel_info.type == DTV_PANEL) ||
-		(mfd->panel_info.type == HDMI_PANEL)) {
-		panel_height = var->yres + var->upper_margin +
-			var->vsync_len + var->lower_margin;
-		panel_width = var->xres + var->right_margin +
-			var->hsync_len + var->left_margin;
-		var_frame_rate = ((var->pixclock)/(panel_height * panel_width));
-		if (mfd->var_frame_rate != var_frame_rate) {
-			fps_mod = 1;
-			mfd->var_frame_rate = var_frame_rate;
-		}
-	}
-	return fps_mod;
 }
 
 static int msm_fb_set_par(struct fb_info *info)
@@ -1656,7 +1521,7 @@ static int msm_fb_set_par(struct fb_info *info)
 		break;
 
 	case 32:
-		if (var->transp.offset == 24)
+		if (var->transp.offset == 0)
 			mfd->fb_imgType = MDP_ARGB_8888;
 		else
 			mfd->fb_imgType = MDP_RGBA_8888;
@@ -1670,15 +1535,12 @@ static int msm_fb_set_par(struct fb_info *info)
 		(mfd->hw_refresh && ((mfd->fb_imgType != old_imgType) ||
 				(mfd->var_pixclock != var->pixclock) ||
 				(mfd->var_xres != var->xres) ||
-				(mfd->var_yres != var->yres) ||
-				(msm_fb_check_frame_rate(mfd, info))))) {
+				(mfd->var_yres != var->yres)))) {
 		mfd->var_xres = var->xres;
 		mfd->var_yres = var->yres;
 		mfd->var_pixclock = var->pixclock;
 		blank = 1;
 	}
-	mfd->fbi->fix.line_length = msm_fb_line_length(mfd->index, var->xres,
-						       var->bits_per_pixel/8);
 
 	if (blank) {
 		msm_fb_blank_sub(FB_BLANK_POWERDOWN, info, mfd->op_enable);
@@ -2071,8 +1933,10 @@ int mdp_blit(struct fb_info *info, struct mdp_blit_req *req)
 		d_h_0 = d_h_1 = req->dst_rect.h;
 		d_x_0 = req->dst_rect.x;
 
-		if (remainder == 14 || remainder == 6)
-			d_w_1 = req->dst_rect.w / 2;
+		if (remainder == 14)
+			d_w_1 = (req->dst_rect.w - 14) / 2 + 4;
+		else if (remainder == 6)
+			d_w_1 = req->dst_rect.w / 2 - 1;
 		else
 			d_w_1 = (req->dst_rect.w - 1) / 2 - 1;
 
@@ -2434,11 +2298,7 @@ static int msmfb_blit(struct fb_info *info, void __user *p)
 	struct mdp_blit_req_list req_list_header;
 
 	int count, i, req_list_count;
-	if (info->node == 1 || info->node == 2) {
-		pr_err("%s: no pan display for fb%d.",
-		       __func__, info->node);
-		return -EPERM;
-	}
+
 	/* Get the count size for the total BLIT request. */
 	if (copy_from_user(&req_list_header, p, sizeof(req_list_header)))
 		return -EFAULT;
@@ -2663,27 +2523,6 @@ static int msmfb_overlay_refresh(struct fb_info *info, unsigned long *argp)
 }
 #endif
 
-static int msmfb_mixer_info(struct fb_info *info, unsigned long *argp)
-{
-	int	ret, cnt;
-	struct	msmfb_mixer_info_req req;
-
-	ret = copy_from_user(&req, argp, sizeof(req));
-	if (ret) {
-		pr_err("%s: failed\n", __func__);
-		return ret;
-	}
-
-	cnt = mdp4_mixer_info(req.mixer_num, req.info);
-	req.cnt = cnt;
-	ret = copy_to_user(argp, &req, sizeof(req));
-	if (ret)
-	pr_err("%s:msmfb_overlay_blt_off ioctl failed\n",
-		__func__);
-
-	return cnt;
-}
-
 DECLARE_MUTEX(msm_fb_ioctl_ppp_sem);
 DEFINE_MUTEX(msm_fb_ioctl_lut_sem);
 DEFINE_MUTEX(msm_fb_ioctl_hist_sem);
@@ -2724,11 +2563,6 @@ static void msmfb_set_color_conv(struct mdp_ccs *p)
 		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 	}
 }
-#else
-static void msmfb_set_color_conv(struct mdp_csc *p)
-{
-	mdp4_vg_csc_update(p);
-}
 #endif
 
 
@@ -2742,8 +2576,6 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 	struct mdp_histogram hist;
 #ifndef CONFIG_FB_MSM_MDP40
 	struct mdp_ccs ccs_matrix;
-#else
-	struct mdp_csc csc_matrix;
 #endif
 	struct mdp_page_protection fb_page_protection;
 	int ret = 0;
@@ -2790,11 +2622,6 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		ret = msmfb_overlay_refresh(info, argp);
 		up(&msm_fb_ioctl_ppp_sem);
 		break;
-	case MSMFB_MIXER_INFO:
-		down(&msm_fb_ioctl_ppp_sem);
-		ret = msmfb_mixer_info(info, argp);
-		up(&msm_fb_ioctl_ppp_sem);
-		break;
 #endif
 	case MSMFB_BLIT:
 		down(&msm_fb_ioctl_ppp_sem);
@@ -2823,16 +2650,7 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		msmfb_set_color_conv(&ccs_matrix) ;
 		up(&msm_fb_ioctl_ppp_sem);
 #else
-		ret = copy_from_user(&csc_matrix, argp, sizeof(csc_matrix));
-		if (ret) {
-			pr_err("%s:MSMFB_SET_CSC_MATRIX ioctl failed\n",
-				__func__);
-			return ret;
-		}
-		down(&msm_fb_ioctl_ppp_sem);
-		msmfb_set_color_conv(&csc_matrix);
-		up(&msm_fb_ioctl_ppp_sem);
-
+		ret = -EINVAL;
 #endif
 
 		break;
@@ -3005,20 +2823,6 @@ void msm_fb_add_device(struct platform_device *pdev)
 	if (!pdata)
 		return;
 	type = pdata->panel_info.type;
-#if defined MSM_FB_NUM
-	/*
-	 * over written fb_num which defined
-	 * at panel_info
-	 *
-	 */
-	if (type == HDMI_PANEL || type == DTV_PANEL || type == TV_PANEL)
-		pdata->panel_info.fb_num = 1;
-	else
-		pdata->panel_info.fb_num = MSM_FB_NUM;
-
-	MSM_FB_INFO("setting pdata->panel_info.fb_num to %d. type: %d\n",
-			pdata->panel_info.fb_num, type);
-#endif
 	fb_num = pdata->panel_info.fb_num;
 
 	if (fb_num <= 0)
@@ -3125,7 +2929,5 @@ int __init msm_fb_init(void)
 
 	return 0;
 }
-
-module_param(align_buffer, bool, 0644);
 
 module_init(msm_fb_init);

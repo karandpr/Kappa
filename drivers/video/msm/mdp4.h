@@ -163,9 +163,10 @@ enum {
 	MDP4_MIXER_STAGE_BASE,
 	MDP4_MIXER_STAGE0,	/* zorder 0 */
 	MDP4_MIXER_STAGE1,	/* zorder 1 */
-	MDP4_MIXER_STAGE2,	/* zorder 2 */
-	MDP4_MIXER_STAGE_MAX
+	MDP4_MIXER_STAGE2	/* zorder 2 */
 };
+
+#define MDP4_MAX_STAGE	4
 
 enum {
 	MDP4_FRAME_FORMAT_LINEAR,
@@ -324,7 +325,6 @@ struct mdp4_statistic {
 	ulong err_format;
 };
 
-struct mdp4_overlay_pipe *mdp4_overlay_ndx2pipe(int ndx);
 void mdp4_sw_reset(unsigned long bits);
 void mdp4_display_intf_sel(int output, unsigned long intf);
 void mdp4_overlay_cfg(int layer, int blt_mode, int refresh, int direct_out);
@@ -348,9 +348,16 @@ void mdp4_isr_read(int);
 void mdp4_clear_lcdc(void);
 void mdp4_mixer_blend_init(int mixer_num);
 void mdp4_vg_qseed_init(int vg_num);
-void mdp4_vg_csc_setup(int vp_num);
-void mdp4_mixer1_csc_setup(void);
-void mdp4_vg_csc_update(struct mdp_csc *p);
+void mdp4_vg_csc_mv_setup(int vp_num);
+void mdp4_vg_csc_pre_bv_setup(int vp_num);
+void mdp4_vg_csc_post_bv_setup(int vp_num);
+void mdp4_vg_csc_pre_lv_setup(int vp_num);
+void mdp4_vg_csc_post_lv_setup(int vp_num);
+void mdp4_mixer1_csc_mv_setup(void);
+void mdp4_mixer1_csc_pre_bv_setup(void);
+void mdp4_mixer1_csc_post_bv_setup(void);
+void mdp4_mixer1_csc_pre_lv_setup(void);
+void mdp4_mixer1_csc_post_lv_setup(void);
 irqreturn_t mdp4_isr(int irq, void *ptr);
 void mdp4_overlay_format_to_pipe(uint32 format, struct mdp4_overlay_pipe *pipe);
 uint32 mdp4_overlay_format(struct mdp4_overlay_pipe *pipe);
@@ -432,8 +439,6 @@ void mdp4_mddi_kickoff_video(struct msm_fb_data_type *mfd,
                                 struct mdp4_overlay_pipe *pipe);
 
 void mdp4_mddi_read_ptr_intr(void);
-
-int mdp4_mixer_info(int mixer_num, struct mdp_mixer_info *info);
 
 void mdp_dmap_vsync_set(int enable);
 int mdp_dmap_vsync_get(void);

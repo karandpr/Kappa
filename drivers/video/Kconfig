@@ -2157,17 +2157,6 @@ config FB_MSM_LCDC_HW
 	bool
 	default n
 
-config FB_MSM_LOGO_ANIMATE
-	tristate "MSM Frame Animated Buffer Logo"
-	select FB_MSM_LOGO
-	default y
-	---help---
-	  Show animated kernel logo during boot.
-
-config FB_MSM_TRIPLE_BUFFER
-	bool "Support for triple frame buffer"
-	default n
-
 choice
 	prompt "MDP HW version"
 	default FB_MSM_MDP22
@@ -2373,12 +2362,6 @@ config FB_MSM_TRY_MDDI_CATCH_LCDC_PRISM
 	  Support for MDDI panel auto detect.
 	  If it can't find any MDDI panel, it will load an LCDC panel.
 
-config FB_MSM_MIPI_PANEL_DETECT
-	depends on FB_MSM_LCDC_HW
-	bool "MIPI Panel Detect + LCDC Samsung WSVGA"
-	select FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT
-	select FB_MSM_LCDC_SAMSUNG_WSVGA
-
 config FB_MSM_MDDI_PANEL_AUTO_DETECT
 	bool "MDDI Panel Auto Detect"
 	select FB_MSM_MDDI_AUTO_DETECT
@@ -2451,9 +2434,9 @@ config FB_MSM_MDDI_SHARP_QVGA_128x128
 	---help---
 	  Support for MDDI Sharp QVGA (240x320) and 128x128 dual panel
 
-config FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT_PANEL
+config FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT
 	bool "MIPI Toshiba WVGA PT Panel"
-	select FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT
+	select FB_MSM_MIPI_DSI
 
 config FB_MSM_EBI2_TMD_QVGA_EPSON_QCIF
 	bool "EBI2 TMD QVGA Epson QCIF Dual Panel"
@@ -2540,11 +2523,6 @@ config MDDI_NOVATEK_PANEL_TMD_LT033MDV1000
 	---help---
 	  Support for TMD_LT033MDV1000 panel connected
 	  to the MDDI Novatek micro controller
-
-config FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT
-	bool
-	select FB_MSM_MIPI_DSI
-	default n
 
 choice
 	prompt "Secondary LCD Panel"

@@ -58,9 +58,6 @@ struct msm_panel_info {
 	__u32 xres;
 	__u32 yres;
 	__u32 bpp;
-	__u32 mode2_xres;
-	__u32 mode2_yres;
-	__u32 mode2_bpp;
 	__u32 type;
 	__u32 wait_cycle;
 	DISP_TARGET_PHYS pdest;
@@ -75,7 +72,6 @@ struct msm_panel_info {
 	/* physical size in mm */
 	__u32 width;
 	__u32 height;
-	__u32 frame_rate;
 
 	union {
 		struct mddi_panel_info mddi;
@@ -86,20 +82,6 @@ struct msm_panel_info {
 		struct lcdc_panel_info lcdc;
 	};
 };
-
-#define MSM_FB_SINGLE_MODE_PANEL(pinfo)		\
-	do {					\
-		(pinfo)->mode2_xres = 0;	\
-		(pinfo)->mode2_yres = 0;	\
-		(pinfo)->mode2_bpp = 0;		\
-	} while (0)
-
-#define MSM_FB_SINGLE_MODE_PANEL(pinfo)		\
-	do {					\
-		(pinfo)->mode2_xres = 0;	\
-		(pinfo)->mode2_yres = 0;	\
-		(pinfo)->mode2_bpp = 0;		\
-	} while (0)
 
 struct msm_fb_panel_data {
 	struct msm_panel_info panel_info;

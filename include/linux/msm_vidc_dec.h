@@ -224,7 +224,6 @@ enum vdec_picture {
 	PICTURE_TYPE_B,
 	PICTURE_TYPE_BI,
 	PICTURE_TYPE_SKIP,
-	PICTURE_TYPE_IDR,
 	PICTURE_TYPE_UNKNOWN
 };
 
@@ -498,8 +497,6 @@ struct vdec_seqheader {
 	size_t seq_header_len;
 	int pmem_fd;
 	size_t pmem_offset;
-	void __user *desc_addr;
-	uint32_t desc_size;
 };
 
 struct vdec_mberror {

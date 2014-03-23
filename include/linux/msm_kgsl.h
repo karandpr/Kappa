@@ -60,9 +60,7 @@ enum kgsl_deviceid {
 enum kgsl_user_mem_type {
 	KGSL_USER_MEM_TYPE_PMEM		= 0x00000000,
 	KGSL_USER_MEM_TYPE_ASHMEM	= 0x00000001,
-	KGSL_USER_MEM_TYPE_ADDR		= 0x00000002,
-	KGSL_USER_MEM_TYPE_ION		= 0x00000003,
-	KGSL_USER_MEM_TYPE_MAX		= 0x00000004,
+	KGSL_USER_MEM_TYPE_ADDR		= 0x00000002
 };
 
 struct kgsl_devinfo {
@@ -163,7 +161,6 @@ struct kgsl_device_pwr_data {
 	int (*set_grp_async)(void);
 	unsigned int idle_timeout;
 	unsigned int nap_allowed;
-	unsigned int idle_needed;
 };
 
 struct kgsl_clk_data {
@@ -212,7 +209,19 @@ struct kgsl_device_getproperty {
 #define IOCTL_KGSL_DEVICE_GETPROPERTY \
 	_IOWR(KGSL_IOC_TYPE, 0x2, struct kgsl_device_getproperty)
 
-/* IOCTL_KGSL_DEVICE_READ (0x3) - removed 03/2012 */
+
+/* read a GPU register.
+   offsetwords it the 32 bit word offset from the beginning of the
+   GPU register space.
+ */
+struct kgsl_device_regread {
+	unsigned int offsetwords;
+	unsigned int value; /* output param */
+};
+
+#define IOCTL_KGSL_DEVICE_REGREAD \
+	_IOWR(KGSL_IOC_TYPE, 0x3, struct kgsl_device_regread)
+
 
 /* block until the GPU has executed past a given timestamp
  * timeout is in milliseconds.
@@ -380,6 +389,13 @@ struct kgsl_bind_gmem_shadow {
     _IOW(KGSL_IOC_TYPE, 0x22, struct kgsl_bind_gmem_shadow)
 
 /* add a block of memory into the GPU address space */
+
+/*
+* IOCTL_KGSL_SHAREDMEM_FROM_VMALLOC deprecated 09/2012
+* use IOCTL_KGSL_GPUMEM_ALLOC instead
+* francisco
+*/
+
 struct kgsl_sharedmem_from_vmalloc {
 	unsigned int gpuaddr;	/*output param */
 	unsigned int hostptr;
